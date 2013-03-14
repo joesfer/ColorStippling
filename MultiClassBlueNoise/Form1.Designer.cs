@@ -65,6 +65,7 @@
             this.serializerWorker = new System.ComponentModel.BackgroundWorker();
             this.prepareStipplingWorker = new System.ComponentModel.BackgroundWorker();
             this.statusReportLabel = new System.Windows.Forms.Label();
+            this.cropRegionCheckBox = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -100,6 +101,7 @@
             // 
             // splitContainer1.Panel2
             // 
+            this.splitContainer1.Panel2.Controls.Add(this.cropRegionCheckBox);
             this.splitContainer1.Panel2.Controls.Add(this.statusReportLabel);
             this.splitContainer1.Panel2.Controls.Add(this.goButton);
             this.splitContainer1.Panel2.Controls.Add(this.progressBar1);
@@ -381,7 +383,10 @@
             this.pictureBox1.TabIndex = 18;
             this.pictureBox1.TabStop = false;
             this.pictureBoxTooltip.SetToolTip(this.pictureBox1, "Left mouse + Drag to pan\r\nRight mouse + Drag to zoom");
+            this.pictureBox1.Paint += new System.Windows.Forms.PaintEventHandler(this.pictureBox1_Paint);
+            this.pictureBox1.MouseDown += new System.Windows.Forms.MouseEventHandler(this.pictureBox1_MouseDown);
             this.pictureBox1.MouseMove += new System.Windows.Forms.MouseEventHandler(this.pictureBox1_MouseMove);
+            this.pictureBox1.MouseUp += new System.Windows.Forms.MouseEventHandler(this.pictureBox1_MouseUp);
             // 
             // pointSizeComboBox
             // 
@@ -485,6 +490,20 @@
             this.statusReportLabel.TabIndex = 24;
             this.statusReportLabel.Text = "...";
             // 
+            // cropRegionCheckBox
+            // 
+            this.cropRegionCheckBox.Appearance = System.Windows.Forms.Appearance.Button;
+            this.cropRegionCheckBox.AutoSize = true;
+            this.cropRegionCheckBox.Location = new System.Drawing.Point(3, 3);
+            this.cropRegionCheckBox.Name = "cropRegionCheckBox";
+            this.cropRegionCheckBox.Size = new System.Drawing.Size(97, 27);
+            this.cropRegionCheckBox.TabIndex = 25;
+            this.cropRegionCheckBox.Text = "Crop Region";
+            this.pictureBoxTooltip.SetToolTip(this.cropRegionCheckBox, "Enable this option and drag a rectangle \r\nto constrain samples to a smaller image" +
+        " \r\nregion for faster preview.");
+            this.cropRegionCheckBox.UseVisualStyleBackColor = true;
+            this.cropRegionCheckBox.Click += new System.EventHandler(this.cropRegionCheckBox_Click);
+            // 
             // ColorStippling
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
@@ -562,6 +581,7 @@
         private System.ComponentModel.BackgroundWorker serializerWorker;
         private System.ComponentModel.BackgroundWorker prepareStipplingWorker;
         private System.Windows.Forms.Label statusReportLabel;
+        private System.Windows.Forms.CheckBox cropRegionCheckBox;
     }
 }
 

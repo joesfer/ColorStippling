@@ -45,6 +45,11 @@ namespace MultiClassBlueNoise
                 return;
             }
 
+            if (File.Exists(stippling.stipplingData.settings.OutputDataFile))
+            {
+                if ( MessageBox.Show("The destination data file exists already.\nDo you want to overwrite it?", "Unable to start stippling", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No ) return;
+            }
+
             stippling.stipplingData.colorBasis = ((ColorBasisItem)(colorBasisListBox.SelectedItem)).basis;
             stippling.stipplingData.additiveBlending = ((ColorBasisItem)(colorBasisListBox.SelectedItem)).additiveBlending;
 
@@ -149,7 +154,7 @@ namespace MultiClassBlueNoise
                         {
                             numSamples++;
                             if (backgroundWorker != null && numSamples % 100 == 0) backgroundWorker.ReportProgress((int)(100 * (float)numSamples / stippling.stipplingData.samples.Count));
-                            if (backgroundWorker != null & backgroundWorker.WorkerSupportsCancellation && backgroundWorker.CancellationPending) return null;
+                            if (backgroundWorker != null && backgroundWorker.WorkerSupportsCancellation && backgroundWorker.CancellationPending) return null;
                             if (!(previewAllColors || smp.c == previewBasisIndex - 1)) continue;
                             if (!previewWindow.Contains((float)smp.x, (float)smp.y)) continue;
 
@@ -284,63 +289,7 @@ namespace MultiClassBlueNoise
             }
             inputColorBasisList.LargeImageList = largeImages;
         }
-       
-        private RectangleF previewWindow = new RectangleF(0, 0, 1, 1);
-        private Point lastMousePos = new Point(-1, -1);
-        private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (lastMousePos.X >= 0 && lastMousePos.Y >= 0)
-            {
-                if (e.Button == MouseButtons.Left)
-                {
-                    int deltaX = e.X - lastMousePos.X;
-                    int deltaY = e.Y - lastMousePos.Y;
-                    float dx = (float)deltaX / pictureBox1.Width;
-                    float dy = (float)deltaY / pictureBox1.Height;
-                    previewWindow.X -= dx * previewWindow.Width;
-                    previewWindow.Y -= dy * previewWindow.Height;
-
-                    if (mostRecentPreview != null)
-                    {
-                        int tx = (int)(dx * mostRecentPreview.Width);
-                        int ty = (int)(dy * mostRecentPreview.Height);
-                        UpdatePreviewBitmapMainThread(CreateMockupPreview(tx, ty, 1.0f));
-                    }
-                    BakePreview();
-                }
-                if (e.Button == MouseButtons.Right)
-                {
-                    float w = previewWindow.Width;
-                    float h = previewWindow.Height;
-                    int deltaX = e.X - lastMousePos.X;
-                    float delta = (float)deltaX / pictureBox1.Width;
-                    if (delta > 0)
-                    {
-                        previewWindow.X += w * delta * 0.5f;
-                        previewWindow.Y += h * delta * 0.5f;
-                        previewWindow.Width *= (1.0f - delta);
-                        previewWindow.Height *= (1.0f - delta);
-                    }
-                    else
-                    {
-                        previewWindow.X += w * delta * 0.5f;
-                        previewWindow.Y += h * delta * 0.5f;
-                        previewWindow.Width *= (1.0f - delta);
-                        previewWindow.Height *= (1.0f - delta);
-                    }
-
-                    if (mostRecentPreview != null)
-                    {
-                        UpdatePreviewBitmapMainThread(CreateMockupPreview(0, 0, 1.0f + delta));
-                    }
-
-                    BakePreview();
-                }          
-            }
-            lastMousePos.X = e.X;
-            lastMousePos.Y = e.Y;
-        }
-
+             
         struct ColorBasisItem
         {
             public ColorBasisItem(string name, bool additiveBlend, params Color[] basis)
@@ -461,9 +410,9 @@ namespace MultiClassBlueNoise
         private void ClearStippling()
         {
             // clear previous samples and color basis
-            stippling.stipplingData.samples = new List<Stippling.Sample_t>();
+            stippling.Clear();
             snapshotPanel.Enabled = false;
-            BakePreview();
+            pictureBox1.Image = null;
         }
         private void pointSizeComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -630,7 +579,11 @@ namespace MultiClassBlueNoise
                         return;
                     }
                     
+                    //
                     goButton.Enabled = false;
+                    snapshotPanel.Enabled = true;
+                    clearButton.Enabled = false;
+                    loadButton.Enabled = false;
 
                     propertyGrid1.SelectedObject = stippling.stipplingData.settings;
                     prepareStipplingWorker.RunWorkerAsync();
@@ -688,6 +641,8 @@ namespace MultiClassBlueNoise
             {
                 CreateColorBasisInputThumbnails(true);
                 goButton.Enabled = true;
+                clearButton.Enabled = true;
+                loadButton.Enabled = true;
                 BakePreview();
             }
             else
@@ -700,5 +655,130 @@ namespace MultiClassBlueNoise
             }
         }
         #endregion
+
+        private PointF cropRegionMin = new PointF(0, 0);
+        private RectangleF cropRegion = new RectangleF(0,0,0,0);
+        private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (cropRegionCheckBox.Checked)
+            {
+                Type pboxType = pictureBox1.GetType();
+                PropertyInfo irProperty = pboxType.GetProperty("ImageRectangle", BindingFlags.GetProperty | BindingFlags.NonPublic | BindingFlags.Instance);
+                Rectangle imageRectangle = (Rectangle)irProperty.GetValue(pictureBox1, null); // it is unbelievable that we need to do this to get the (private) image rectangle
+
+                Point p = new Point(e.X - imageRectangle.X, e.Y - imageRectangle.Y);
+                cropRegionMin = new PointF((float)p.X / imageRectangle.Width * previewWindow.Width + previewWindow.X, (float)p.Y / imageRectangle.Height * previewWindow.Height + previewWindow.Y);
+            }
+        }
+
+        private RectangleF previewWindow = new RectangleF(0, 0, 1, 1);
+        private Point lastMousePos = new Point(-1, -1);
+        private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (lastMousePos.X >= 0 && lastMousePos.Y >= 0)
+            {
+
+                if (e.Button == MouseButtons.Left)
+                {
+                    
+                    if (cropRegionCheckBox.Checked)
+                    {
+                        Type pboxType = pictureBox1.GetType();
+                        PropertyInfo irProperty = pboxType.GetProperty("ImageRectangle", BindingFlags.GetProperty | BindingFlags.NonPublic | BindingFlags.Instance);
+                        Rectangle imageRectangle = (Rectangle)irProperty.GetValue(pictureBox1, null); // it is unbelievable that we need to do this to get the (private) image rectangle
+
+                        Point p = new Point(e.X - imageRectangle.X, e.Y - imageRectangle.Y);
+                        PointF cropRegionMax = new PointF((float)p.X / imageRectangle.Width * previewWindow.Width + previewWindow.X, (float)p.Y / imageRectangle.Height * previewWindow.Height + previewWindow.Y);
+                        PointF crA = new PointF(Math.Min(cropRegionMin.X, cropRegionMax.X), Math.Min(cropRegionMin.Y, cropRegionMax.Y));
+                        PointF crB = new PointF(Math.Max(cropRegionMin.X, cropRegionMax.X), Math.Max(cropRegionMin.Y, cropRegionMax.Y));
+                        cropRegion = new RectangleF(crA.X, crA.Y, crB.X - crA.X, crB.Y - crA.Y);
+                    }
+                    else
+                    {
+                        // pan
+                        int deltaX = e.X - lastMousePos.X;
+                        int deltaY = e.Y - lastMousePos.Y;
+                        float dx = (float)deltaX / pictureBox1.Width;
+                        float dy = (float)deltaY / pictureBox1.Height;
+                        previewWindow.X -= dx * previewWindow.Width;
+                        previewWindow.Y -= dy * previewWindow.Height;
+
+                        if (mostRecentPreview != null)
+                        {
+                            int tx = (int)(dx * mostRecentPreview.Width);
+                            int ty = (int)(dy * mostRecentPreview.Height);
+                            UpdatePreviewBitmapMainThread(CreateMockupPreview(tx, ty, 1.0f));
+                        }
+                        BakePreview();
+                    }
+                }
+
+                if (e.Button == MouseButtons.Right)
+                {                    
+                    float w = previewWindow.Width;
+                    float h = previewWindow.Height;
+                    int deltaX = e.X - lastMousePos.X;
+                    float delta = (float)deltaX / pictureBox1.Width;
+
+                    if (delta > 0)
+                    {
+                        previewWindow.X += w * delta * 0.5f;
+                        previewWindow.Y += h * delta * 0.5f;
+                        previewWindow.Width *= (1.0f - delta);
+                        previewWindow.Height *= (1.0f - delta);
+                    }
+                    else
+                    {
+                        previewWindow.X += w * delta * 0.5f;
+                        previewWindow.Y += h * delta * 0.5f;
+                        previewWindow.Width *= (1.0f - delta);
+                        previewWindow.Height *= (1.0f - delta);
+                    }
+
+                    if (mostRecentPreview != null)
+                    {
+                        UpdatePreviewBitmapMainThread(CreateMockupPreview(0, 0, 1.0f + delta));
+                    }
+                    BakePreview();
+                }
+
+                if (e.Button != MouseButtons.None && cropRegionCheckBox.Checked) pictureBox1.Invalidate();
+
+            }
+            lastMousePos.X = e.X;
+            lastMousePos.Y = e.Y;
+        }
+
+        private void pictureBox1_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (cropRegionCheckBox.Checked)
+            {
+                stippling.cropRegion = cropRegion;
+            }
+        }
+
+        private void pictureBox1_Paint(object sender, PaintEventArgs e)
+        {
+            Type pboxType = pictureBox1.GetType();
+            PropertyInfo irProperty = pboxType.GetProperty("ImageRectangle", BindingFlags.GetProperty | BindingFlags.NonPublic | BindingFlags.Instance);
+            Rectangle imageRectangle = (Rectangle)irProperty.GetValue(pictureBox1, null); // it is unbelievable that we need to do this to get the (private) image rectangle
+
+            if (cropRegionCheckBox.Checked)
+            {
+                Point ca = new Point(imageRectangle.X + (int)((cropRegion.X - previewWindow.X) / previewWindow.Width * imageRectangle.Width), imageRectangle.Y + (int)((cropRegion.Y - previewWindow.Y) / previewWindow.Height * imageRectangle.Height));
+                Point cb = new Point(ca.X + (int)(cropRegion.Width / previewWindow.Width * imageRectangle.Width), ca.Y + (int)(cropRegion.Height / previewWindow.Height * imageRectangle.Height));
+                e.Graphics.DrawRectangle(new Pen(Color.Black), new Rectangle(ca.X, ca.Y, cb.X - ca.X, cb.Y - ca.Y));
+                e.Graphics.DrawRectangle(new Pen(Color.White), new Rectangle(ca.X - 1, ca.Y - 1, cb.X - ca.X + 2, cb.Y - ca.Y + 2));
+            }
+        }
+
+        private void cropRegionCheckBox_Click(object sender, EventArgs e)
+        {
+            if (cropRegionCheckBox.Checked == false)
+            {
+                cropRegion = new RectangleF(0, 0, 0, 0);
+                stippling.cropRegion = null;
+            }
+        }
     }
 }

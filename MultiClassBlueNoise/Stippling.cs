@@ -144,6 +144,8 @@ namespace MultiClassBlueNoise
             private StipplingSettings_t _settings;
         }
 
+        public RectangleF? cropRegion = null;
+
         List<Sample_t>[,] sampleHash = null;
         
         double[, , ,] r = null;
@@ -176,23 +178,12 @@ namespace MultiClassBlueNoise
 
             Random rnd = new Random();
 
-            stippling.PrepareStippling(stippling.stipplingData.settings.Spacing, worker);
-
+            if ( stippling.RadiusMatrix == null || stippling.imageWidth == 0 || stippling.imageHeight == 0 ) stippling.PrepareStippling(stippling.stipplingData.settings.Spacing, worker);
 
             int[] Ni = new int[stippling.NumClasses]; // target num samples per class
-            {
-                //double denom = 0;
-                //for( int i = 0; i < numClasses; ++i )
-                //{
-                //    denom += 1.0 / (rDiag[i] * rDiag[i]);
-                //}
-                //for( int i = 0; i < numClasses; ++i )
-                //{
-                //    Ni[i] = (int)((float)N * (1.0f / (rDiag[i] * rDiag[i])) / denom);
-                //}
+            {  
                 for (int i = 0; i < stippling.NumClasses; ++i) Ni[i] = (int)((float)stippling.stipplingData.settings.TotalSamples / stippling.NumClasses);
             }
-
 
             //
             int[] ni = new int[stippling.NumClasses];
@@ -222,29 +213,29 @@ namespace MultiClassBlueNoise
                 {
                     if (worker.WorkerSupportsCancellation && worker.CancellationPending) return;
 
-                    double cellX = (double)rnd.Next(0, HashCells) / HashCells;
-                    double cellY = (double)rnd.Next(0, HashCells) / HashCells;
-                    double w = rnd.NextDouble() / HashCells;
-                    double h = rnd.NextDouble() / HashCells;
+                    if (stippling.cropRegion.HasValue)
+                    {
+                        double w = rnd.NextDouble() * stippling.cropRegion.Value.Width + stippling.cropRegion.Value.X;
+                        double h = rnd.NextDouble() * stippling.cropRegion.Value.Height + stippling.cropRegion.Value.Y;
 
-                    s.x = cellX + w;
-                    s.y = cellY + h;
+                        s.x = w;
+                        s.y = h;
+                    }
+                    else
+                    {
+                        double cellX = (double)rnd.Next(0, HashCells) / HashCells;
+                        double cellY = (double)rnd.Next(0, HashCells) / HashCells;
+                        double w = rnd.NextDouble() / HashCells;
+                        double h = rnd.NextDouble() / HashCells;
+
+                        s.x = cellX + w;
+                        s.y = cellY + h;
+                    }
+
 
                     int sx = (int)(s.x * stippling.OutputImageWidth);
                     int sy = (int)(s.y * stippling.OutputImageHeight);
-#if false
-                    for (int d = 0; d < numClasses; d++) diag[d] = r[sx, sy, d, d];
-                    {
-                        double md = diag.Min();
-                        List<int> classes = new List<int>();
-                        for (int d = 0; d < numClasses; d++)
-                        {
-                            diag[d] /= md;
-                            for (int d2 = 0; d2 < (int)Math.Ceiling(diag[d]); ++d2) classes.Add(d);
-                        }
-                        c = classes[rnd.Next(classes.Count)];
-                    }
-#endif
+
                     s.c = c;
                     numAttempts++;
                 } while (numAttempts < stippling.stipplingData.settings.Retries && !stippling.AcceptSample(s));
@@ -275,7 +266,7 @@ namespace MultiClassBlueNoise
                 if (worker != null && worker.WorkerReportsProgress && 
                     stippling.stipplingData.samples.Count % stippling.stipplingData.settings.UpdateFrequency == 0)
                 {
-                    worker.ReportProgress((int)(100 * (float)stippling.stipplingData.samples.Count / stippling.stipplingData.settings.TotalSamples), "Stippling...");
+                    worker.ReportProgress((int)(100 * (float)stippling.stipplingData.samples.Count / stippling.stipplingData.settings.TotalSamples), String.Format("Stippling... {0} samples placed", stippling.stipplingData.samples.Count));
                 }
 
             } while (stippling.stipplingData.samples.Count < stippling.stipplingData.settings.TotalSamples);
@@ -445,6 +436,14 @@ namespace MultiClassBlueNoise
                      fillRate[s_.c] < fillRate[s.c]) return false;
             }
             return true;
+        }
+
+        internal void Clear()
+        {
+            stipplingData.samples.Clear();
+            r = null;
+            imageWidth = 0;
+            imageHeight = 0;
         }
     }
 }
