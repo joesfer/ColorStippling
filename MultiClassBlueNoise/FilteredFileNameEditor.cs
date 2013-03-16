@@ -1,4 +1,36 @@
-﻿using System;
+﻿/* 
+	================================================================================
+	Copyright (c) 2013, Jose Esteve. http://www.joesfer.com
+	All rights reserved. 
+
+	Redistribution and use in source and binary forms, with or without modification, 
+	are permitted provided that the following conditions are met: 
+
+	* Redistributions of source code must retain the above copyright notice, this 
+	  list of conditions and the following disclaimer. 
+	
+	* Redistributions in binary form must reproduce the above copyright notice, 
+	  this list of conditions and the following disclaimer in the documentation 
+	  and/or other materials provided with the distribution. 
+	
+	* Neither the name of the organization nor the names of its contributors may 
+	  be used to endorse or promote products derived from this software without 
+	  specific prior written permission. 
+
+	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
+	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
+	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
+	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON 
+	ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+	================================================================================
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,9 +41,9 @@ using System.ComponentModel;
 namespace MultiClassBlueNoise
 {
 
-    internal class FilteredImageFileNameEditor : UITypeEditor
+    internal class LoadImageFileNameEditor : UITypeEditor
     {
-        private OpenFileDialog ofd = new OpenFileDialog();
+        private OpenFileDialog sfd = new OpenFileDialog();
 
         public override UITypeEditorEditStyle GetEditStyle(
          ITypeDescriptorContext context)
@@ -24,19 +56,20 @@ namespace MultiClassBlueNoise
          IServiceProvider provider,
          object value)
         {
-            ofd.FileName = value.ToString();
-            ofd.Filter = "JPG File|*.jpg|PNG File|*.png";
-            if (ofd.ShowDialog() == DialogResult.OK)
+            sfd.FileName = value.ToString();
+            sfd.Filter = "JPG File|*.jpg|PNG File|*.png";
+            if (sfd.ShowDialog() == DialogResult.OK)
             {
-                return ofd.FileName;
+                return sfd.FileName;
             }
             return base.EditValue(context, provider, value);
         }
     }
 
-    internal class FilteredXMLFileNameEditor : UITypeEditor
+
+    internal class SaveImageFileNameEditor : UITypeEditor
     {
-        private OpenFileDialog ofd = new OpenFileDialog();
+        private SaveFileDialog sfd = new SaveFileDialog();
 
         public override UITypeEditorEditStyle GetEditStyle(
          ITypeDescriptorContext context)
@@ -49,11 +82,36 @@ namespace MultiClassBlueNoise
          IServiceProvider provider,
          object value)
         {
-            ofd.FileName = value.ToString();
-            ofd.Filter = "XML File|*.xml";
-            if (ofd.ShowDialog() == DialogResult.OK)
+            sfd.FileName = value.ToString();
+            sfd.Filter = "JPG File|*.jpg|PNG File|*.png";
+            if (sfd.ShowDialog() == DialogResult.OK)
             {
-                return ofd.FileName;
+                return sfd.FileName;
+            }
+            return base.EditValue(context, provider, value);
+        }
+    }
+
+    internal class SaveXMLFileNameEditor : UITypeEditor
+    {
+        private SaveFileDialog sfd = new SaveFileDialog();
+
+        public override UITypeEditorEditStyle GetEditStyle(
+         ITypeDescriptorContext context)
+        {
+            return UITypeEditorEditStyle.Modal;
+        }
+
+        public override object EditValue(
+         ITypeDescriptorContext context,
+         IServiceProvider provider,
+         object value)
+        {
+            sfd.FileName = value.ToString();
+            sfd.Filter = "XML File|*.xml";
+            if (sfd.ShowDialog() == DialogResult.OK)
+            {
+                return sfd.FileName;
             }
             return base.EditValue(context, provider, value);
         }
