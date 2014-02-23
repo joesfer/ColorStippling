@@ -1,6 +1,6 @@
 Color Stippling
 ===============
-Implementation of the Color Stippling algorithms as described in http://www.joesfer.com/wp-admin/post.php?post=149
+Implementation of the Color Stippling algorithms as described in http://www.joesfer.com/?p=149
 
 License
 =======
